@@ -4,6 +4,7 @@ const CATEGORY_LABEL = {
   friend: "학교·친구",
   etc: "기타",
 };
+const PREVIEW_LENGTH = 10;
 
 const tabs = document.querySelectorAll(".tab");
 const postList = document.getElementById("post-list");
@@ -12,11 +13,129 @@ const contentInput = document.getElementById("post-content");
 const categorySelect = document.getElementById("post-category");
 const charCount = document.getElementById("char-count");
 const submitBtn = document.getElementById("submit-btn");
+const authArea = document.getElementById("auth-area");
+const authModal = document.getElementById("auth-modal");
+const modalTitle = document.getElementById("modal-title");
+const modalClose = document.getElementById("modal-close");
+const modalSwitchLink = document.getElementById("modal-switch-link");
+const authEmail = document.getElementById("auth-email");
+const authPassword = document.getElementById("auth-password");
+const authError = document.getElementById("auth-error");
+const authSubmit = document.getElementById("auth-submit");
 
 let activeCategory = "all";
 let unsubscribe = null;
+let currentUser = null;
+let lastDocs = [];
+let authMode = "signup";
 const expandedPosts = new Set();
 const commentUnsubs = new Map();
+
+function authErrorMessage(code) {
+  switch (code) {
+    case "auth/email-already-in-use":
+      return "이미 가입된 이메일이에요.";
+    case "auth/invalid-email":
+      return "이메일 형식이 올바르지 않아요.";
+    case "auth/weak-password":
+      return "비밀번호는 6자 이상이어야 해요.";
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return "이메일 또는 비밀번호가 올바르지 않아요.";
+    default:
+      return "문제가 발생했어요. 잠시 후 다시 시도해주세요.";
+  }
+}
+
+function updateModalMode() {
+  if (authMode === "signup") {
+    modalTitle.textContent = "회원가입";
+    authSubmit.textContent = "가입하기";
+    modalSwitchLink.textContent = "로그인";
+  } else {
+    modalTitle.textContent = "로그인";
+    authSubmit.textContent = "로그인";
+    modalSwitchLink.textContent = "회원가입";
+  }
+}
+
+function openAuthModal(mode) {
+  authMode = mode;
+  authError.hidden = true;
+  authEmail.value = "";
+  authPassword.value = "";
+  updateModalMode();
+  authModal.hidden = false;
+}
+
+function closeAuthModal() {
+  authModal.hidden = true;
+}
+
+modalClose.addEventListener("click", closeAuthModal);
+modalSwitchLink.addEventListener("click", (e) => {
+  e.preventDefault();
+  authMode = authMode === "signup" ? "login" : "signup";
+  updateModalMode();
+});
+
+authSubmit.addEventListener("click", async () => {
+  const email = authEmail.value.trim();
+  const password = authPassword.value;
+  if (!email || !password) return;
+  authSubmit.disabled = true;
+  authError.hidden = true;
+  try {
+    if (authMode === "signup") {
+      await auth.createUserWithEmailAndPassword(email, password);
+    } else {
+      await auth.signInWithEmailAndPassword(email, password);
+    }
+    closeAuthModal();
+  } catch (err) {
+    authError.textContent = authErrorMessage(err.code);
+    authError.hidden = false;
+  } finally {
+    authSubmit.disabled = false;
+  }
+});
+
+function renderAuthArea() {
+  authArea.innerHTML = "";
+  if (currentUser) {
+    const emailSpan = document.createElement("span");
+    emailSpan.className = "auth-email";
+    emailSpan.textContent = currentUser.email;
+
+    const logoutBtn = document.createElement("button");
+    logoutBtn.className = "auth-btn";
+    logoutBtn.textContent = "로그아웃";
+    logoutBtn.addEventListener("click", () => auth.signOut());
+
+    authArea.appendChild(emailSpan);
+    authArea.appendChild(logoutBtn);
+  } else {
+    const loginBtn = document.createElement("button");
+    loginBtn.className = "auth-btn";
+    loginBtn.textContent = "로그인";
+    loginBtn.addEventListener("click", () => openAuthModal("login"));
+
+    const signupBtn = document.createElement("button");
+    signupBtn.className = "auth-btn primary";
+    signupBtn.textContent = "회원가입";
+    signupBtn.addEventListener("click", () => openAuthModal("signup"));
+
+    authArea.appendChild(loginBtn);
+    authArea.appendChild(signupBtn);
+  }
+}
+
+auth.onAuthStateChanged((user) => {
+  currentUser = user;
+  renderAuthArea();
+  renderPosts(lastDocs);
+});
 
 contentInput.addEventListener("input", () => {
   charCount.textContent = `${contentInput.value.length} / 1000`;
@@ -37,11 +156,19 @@ submitBtn.addEventListener("click", async () => {
 
   submitBtn.disabled = true;
   try {
-    await db.collection("posts").add({
+    const postRef = db.collection("posts").doc();
+    const batch = db.batch();
+    batch.set(postRef, {
       category: categorySelect.value,
+      preview: content.slice(0, PREVIEW_LENGTH),
+      truncated: content.length > PREVIEW_LENGTH,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    batch.set(db.collection("post_full").doc(postRef.id), {
       content,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     });
+    await batch.commit();
     contentInput.value = "";
     charCount.textContent = "0 / 1000";
   } catch (err) {
@@ -62,6 +189,30 @@ function timeAgo(date) {
   if (hours < 24) return `${hours}시간 전`;
   const days = Math.floor(hours / 24);
   return `${days}일 전`;
+}
+
+// Content gating (sign-up wall) is temporarily disabled while the site is
+// under AdSense review — full content is fetched for everyone regardless of
+// login state. See firestore.rules for the matching post_full read rule.
+function renderPostBody(data, postId) {
+  if (!data.truncated) {
+    const body = document.createElement("p");
+    body.className = "post-content";
+    body.textContent = data.preview;
+    return body;
+  }
+
+  const body = document.createElement("p");
+  body.className = "post-content";
+  body.textContent = data.preview + "...";
+  db.collection("post_full")
+    .doc(postId)
+    .get()
+    .then((snap) => {
+      if (snap.exists) body.textContent = snap.data().content;
+    })
+    .catch((err) => console.error(err));
+  return body;
 }
 
 function renderPosts(docs) {
@@ -85,9 +236,7 @@ function renderPosts(docs) {
     meta.className = "post-meta";
     meta.innerHTML = `<span class="post-category">${CATEGORY_LABEL[data.category] || "기타"}</span><span class="post-time">${timeAgo(data.createdAt ? data.createdAt.toDate() : null)}</span>`;
 
-    const body = document.createElement("p");
-    body.className = "post-content";
-    body.textContent = data.content;
+    const body = renderPostBody(data, postId);
 
     const actions = document.createElement("div");
     actions.className = "post-actions";
@@ -243,7 +392,10 @@ function subscribeToPosts() {
   }
 
   unsubscribe = query.onSnapshot(
-    (snapshot) => renderPosts(snapshot.docs),
+    (snapshot) => {
+      lastDocs = snapshot.docs;
+      renderPosts(lastDocs);
+    },
     (err) => console.error(err)
   );
 }
