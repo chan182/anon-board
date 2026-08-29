@@ -10,6 +10,16 @@ service cloud.firestore {
                     && request.resource.data.content.size() <= 1000
                     && request.resource.data.createdAt == request.time;
       allow update, delete: if false;
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if request.resource.data.keys().hasOnly(['content', 'createdAt'])
+                      && request.resource.data.content is string
+                      && request.resource.data.content.size() > 0
+                      && request.resource.data.content.size() <= 300
+                      && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
     }
     match /reports/{reportId} {
       allow read: if false;

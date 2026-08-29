@@ -120,6 +120,11 @@ main {
   word-break: break-word;
   margin-bottom: 10px;
 }
+.post-actions {
+  display: flex;
+  gap: 14px;
+}
+.comment-toggle,
 .report-btn {
   background: none;
   border: none;
@@ -128,8 +133,58 @@ main {
   cursor: pointer;
   padding: 0;
 }
+.comment-toggle:hover { color: var(--accent); }
 .report-btn:hover { color: var(--danger); }
 .report-btn:disabled { color: var(--text-dim); cursor: default; text-decoration: none; }
+.comment-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.comment-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.85rem;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.comment-content { word-break: break-word; }
+.comment-time { color: var(--text-dim); font-size: 0.72rem; white-space: nowrap; }
+.comment-empty { color: var(--text-dim); font-size: 0.82rem; }
+.comment-form {
+  display: flex;
+  gap: 8px;
+}
+.comment-form input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  background: var(--bg);
+  color: var(--text);
+}
+.comment-form button {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.comment-form button:hover { opacity: 0.85; }
+.comment-form button:disabled { opacity: 0.5; cursor: default; }
 .empty-state {
   text-align: center;
   color: var(--text-dim);
