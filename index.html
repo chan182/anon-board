@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>마음창고 - 익명 고민 게시판</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="logo">🌿 마음창고</div>
+  <p class="tagline">누구에게도 못한 이야기, 여기서는 익명으로 편하게</p>
+</header>
+
+<main>
+  <div class="category-tabs" id="category-tabs">
+    <button class="tab active" data-category="all">전체</button>
+    <button class="tab" data-category="boss">직장 상사</button>
+    <button class="tab" data-category="relationship">인간관계</button>
+    <button class="tab" data-category="friend">학교·친구</button>
+    <button class="tab" data-category="etc">기타</button>
+  </div>
+
+  <section class="write-box">
+    <select id="post-category">
+      <option value="boss">직장 상사</option>
+      <option value="relationship">인간관계</option>
+      <option value="friend">학교·친구</option>
+      <option value="etc">기타</option>
+    </select>
+    <textarea id="post-content" maxlength="1000" placeholder="무슨 일이 있었는지, 어떤 마음인지 편하게 적어보세요. 완전히 익명으로 올라가요."></textarea>
+    <div class="write-footer">
+      <span id="char-count">0 / 1000</span>
+      <button id="submit-btn">익명으로 올리기</button>
+    </div>
+  </section>
+
+  <section class="post-list" id="post-list">
+    <p class="empty-state" id="empty-state">아직 글이 없어요. 첫 이야기를 들려주세요.</p>
+  </section>
+</main>
+
+<footer>
+  이곳의 글은 완전 익명으로 저장되며, 부적절한 글은 신고할 수 있어요.
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>

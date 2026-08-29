@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['category', 'content', 'createdAt'])
+                    && request.resource.data.category in ['boss', 'relationship', 'friend', 'etc']
+                    && request.resource.data.content is string
+                    && request.resource.data.content.size() > 0
+                    && request.resource.data.content.size() <= 1000
+                    && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+    match /reports/{reportId} {
+      allow read: if false;
+      allow create: if request.resource.data.keys().hasOnly(['postId', 'createdAt'])
+                    && request.resource.data.postId is string
+                    && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+  }
+}
